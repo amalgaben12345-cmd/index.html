@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦴 تحدي التشريح الدقيق</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            direction: rtl;
+        }
+
+        .container {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            width: 95%;
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        .screen { display: none; }
+        .active { display: block; animation: fadeIn 0.5s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        h1 { color: var(--primary); }
+
+        button.main-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin: 10px;
+        }
+
+        button.main-btn:hover { transform: scale(1.05); background-color: #2980b9; }
+
+        #gameArea {
+            position: relative;
+            display: inline-block;
+            background: white;
+            /* أبعاد الصورة المرفقة تقريباً */
+            width: 480px;
+            height: 720px;
+            border: 1px solid #ddd;
+        }
+
+        #bodyImg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .drop-zone {
+            position: absolute;
+            width: 90px; 
+            height: 24px;
+            border: 1.5px dashed #bdc3c7;
+            background: rgba(255,255,255,0.9);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 10;
+            transform: translateY(-50%);
+            direction: ltr;
+        }
+        
+        .drop-zone.hover { border-color: var(--accent); background: #ebf5fb; }
+
+        #wordsBank {
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            direction: ltr;
+        }
+
+        .word-item {
+            padding: 8px 15px;
+            background: #f8f9fa;
+            border: 1px solid #d1d8e0;
+            border-radius: 20px;
+            cursor: grab;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .correct { background: var(--success) !important; color: white; border-color: transparent !important; }
+        .wrong { background: var(--danger) !important; color: white; border-color: transparent !important; }
+        
+        #resultPanel { margin-top: 15px; display: none; padding: 15px; background: #fcfcfc; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="startScreen" class="screen active">
+        <h1>🦴 تحدي المصطلحات التشريحية</h1>
+        <p>استخدم الصور الخام لتعريف المناطق التشريحية للجسم.</p>
+        <button class="main-btn" onclick="showScreen('selectScreen')">ابدأ اللعب</button>
+    </div>
+
+    <div id="selectScreen" class="screen">
+        <h2>اختر العرض</h2>
+        <button class="main-btn" style="background:#e67e22" onclick="startGame('front')">Anterior (الأمامي)</button>
+        <button class="main-btn" style="background:#9b59b6" onclick="startGame('back')">Posterior (الخلفي)</button>
+    </div>
+
+    <div id="gameScreen" class="screen">
+        <div id="gameArea">
+            <img id="bodyImg" src="" alt="Anatomical Chart">
+            <div id="zonesContainer"></div>
+        </div>
+
+        <div id="wordsBank"></div>
+
+        <div id="resultPanel">
+            <div id="resultText" style="font-weight: bold; font-size: 1.2em;"></div>
+            <button class="main-btn" onclick="location.reload()">إعادة المحاولة 🔄</button>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button id="finishBtn" class="main-btn" style="background: var(--success);" onclick="finishGame()">مراجعة الإجابات ✔️</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const data = {
+        front: {
+            img: "body_front.jpg", 
+            parts: [
+                // الجانب الأيسر (من منظور الناظر) - يغطي الخطوط المتجهة لليسار
+                { label: "Orbital", top: "18.5%", left: "80%" },
+                { label: "Buccal", top: "22.5%", left: "80%" },
+                { label: "Sternal", top: "28.5%", left: "80%" },
+                { label: "Axillary", top: "33.5%", left: "80%" },
+                { label: "Pelvic", top: "52.5%", left: "83%" },
+                { label: "Coxal", top: "62.5%", left: "83%" },
+                { label: "Inguinal", top: "67.5%", left: "83%" },
+                { label: "Femoral", top: "74.5%", left: "83%" },
+                { label: "Fibular", top: "82.5%", left: "83%" },
+
+                // الجانب الأيمن (من منظور الناظر) - يغطي الخطوط المتجهة لليمين
+                { label: "Nasal", top: "18.5%", left: "20%" },
+                { label: "Oral", top: "22.5%", left: "20%" },
+                { label: "Cervical", top: "26.5%", left: "20%" },
+                { label: "Acromial", top: "30.5%", left: "20%" },
+                { label: "Thoracic", top: "36.5%", left: "20%" },
+                { label: "Brachial", top: "42.5%", left: "20%" },
+                { label: "Antecubital", top: "47.5%", left: "20%" },
+                { label: "Abdominal", top: "52.5%", left: "20%" },
+                { label: "Umbilical", top: "57.5%", left: "20%" },
+                { label: "Carpal", top: "67.5%", left: "17%" },
+                { label: "Digital", top: "72.5%", left: "17%" },
+                { label: "Pubic", top: "77.5%", left: "17%" },
+                { label: "Patellar", top: "83.5%", left: "17%" },
+                { label: "Crural", top: "90.5%", left: "17%" },
+                { label: "Tarsal", top: "96.5%", left: "17%" }
+            ]
+        },
+        back: {
+            img: "body_back.jpg",
+            parts: [
+                // الجانب الأيمن (الخطوط المتجهة لليمين)
+                { label: "Occipital", top: "19.5%", left: "80%" },
+                { label: "Deltoid", top: "28.5%", left: "80%" },
+                { label: "Scapular", top: "35.5%", left: "80%" },
+                { label: "Vertebral", top: "41.5%", left: "80%" },
+                { label: "Olecranal", top: "47.5%", left: "80%" },
+                { label: "Lumbar", top: "54.5%", left: "80%" },
+                { label: "Sacral", top: "58.5%", left: "80%" },
+                { label: "Gluteal", top: "68.5%", left: "80%" },
+                { label: "Popliteal", top: "80.5%", left: "80%" },
+                { label: "Sural", top: "87.5%", left: "80%" },
+                { label: "Calcaneal", top: "95.5%", left: "80%" },
+                { label: "Plantar", top: "98.5%", left: "80%" },
+
+                // الجانب الأيسر (الخطوط المتجهة لليسار)
+                { label: "Cephalic", top: "21.5%", left: "20%" },
+                { label: "Thoracic", top: "40.5%", left: "20%" },
+                { label: "Femoral", top: "72.5%", left: "20%" },
+                { label: "Crural", top: "85.5%", left: "20%" }
+            ]
+        }
+    };
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function startGame(mode) {
+        const config = data[mode];
+        const img = document.getElementById('bodyImg');
+        img.src = config.img;
+        
+        img.onload = () => {
+            setupGame(config);
+            showScreen('gameScreen');
+        };
+    }
+
+    function setupGame(config) {
+        const zones = document.getElementById('zonesContainer');
+        const bank = document.getElementById('wordsBank');
+        zones.innerHTML = '';
+        bank.innerHTML = '';
+
+        config.parts.forEach(part => {
+            const zone = document.createElement('div');
+            zone.className = 'drop-zone';
+            zone.style.top = part.top;
+            zone.style.left = part.left;
+            zone.dataset.answer = part.label;
+            zone.ondragover = e => { e.preventDefault(); zone.classList.add('hover'); };
+            zone.ondragleave = () => zone.classList.remove('hover');
+            zone.ondrop = handleDrop;
+            zones.appendChild(zone);
+        });
+
+        [...config.parts].sort(() => Math.random() - 0.5).forEach(part => {
+            const word = document.createElement('div');
+            word.className = 'word-item';
+            word.innerText = part.label;
+            word.draggable = true;
+            word.id = "w-" + Math.random();
+            word.ondragstart = e => {
+                e.dataTransfer.setData("text", e.target.innerText);
+                e.dataTransfer.setData("sourceId", e.target.id);
+            };
+            bank.appendChild(word);
+        });
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const zone = e.target.closest('.drop-zone');
+        zone.classList.remove('hover');
+        const text = e.dataTransfer.getData("text");
+        const sourceId = e.dataTransfer.getData("sourceId");
+        
+        if (zone.innerText === "") {
+            zone.innerText = text;
+            document.getElementById(sourceId).style.visibility = "hidden";
+        }
+    }
+
+    function finishGame() {
+        let score = 0;
+        const zones = document.querySelectorAll('.drop-zone');
+        zones.forEach(z => {
+            if (z.innerText === z.dataset.answer) {
+                z.classList.add('correct');
+                score++;
+            } else {
+                z.classList.add('wrong');
+                z.innerHTML = `<span style="font-size:9px">${z.dataset.answer}</span>`;
+            }
+        });
+
+        document.getElementById('finishBtn').style.display = 'none';
+        document.getElementById('wordsBank').style.display = 'none';
+        const panel = document.getElementById('resultPanel');
+        panel.style.display = 'block';
+        document.getElementById('resultText').innerText = `نتيجتك: ${score} من ${zones.length}`;
+    }
+</script>
+
+</body>
+</html>
